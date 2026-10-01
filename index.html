@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#111827">
+    <title>Генератор ссылок</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div class="mark">↗</div>
+        <div>
+          <p class="eyebrow">LINK STUDIO</p>
+          <h1>Массовая генерация ссылок</h1>
+          <p class="subtitle">Создавайте разные адреса для одного ресурса. Список остаётся в этом браузере.</p>
+        </div>
+      </header>
+
+      <section class="panel" aria-labelledby="settings-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">НАСТРОЙКИ</p>
+            <h2 id="settings-title">Новая партия</h2>
+          </div>
+          <span class="target-pill">Цель: oopsie.bio/ashleywow</span>
+        </div>
+        <form id="generator">
+          <div class="fields">
+            <label>Количество
+              <input id="count" type="number" min="1" max="10000" value="100" required>
+              <small>От 1 до 10 000 за раз</small>
+            </label>
+            <label>Префикс
+              <input id="prefix" type="text" maxlength="24" value="link" pattern="[a-zA-Z0-9-]+" required>
+              <small>Латинские буквы, цифры и дефис</small>
+            </label>
+            <label>Случайная часть
+              <select id="length">
+                <option value="6">6 символов</option>
+                <option value="8" selected>8 символов</option>
+                <option value="12">12 символов</option>
+              </select>
+              <small>Чем длиннее, тем меньше шанс совпадения</small>
+            </label>
+          </div>
+          <div class="actions">
+            <button class="primary" type="submit">Создать ссылки <span aria-hidden="true">↗</span></button>
+            <span id="status" role="status" aria-live="polite"></span>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel results" aria-labelledby="results-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">РЕЗУЛЬТАТ</p>
+            <h2 id="results-title">Ваши ссылки <span id="total" class="count-badge">0</span></h2>
+          </div>
+          <div class="toolbar">
+            <button id="copy" class="secondary" type="button" disabled>Скопировать все</button>
+            <button id="csv" class="secondary" type="button" disabled>Скачать CSV</button>
+            <button id="clear" class="text-button" type="button" disabled>Очистить</button>
+          </div>
+        </div>
+        <div id="empty" class="empty">Создайте первую партию — ссылки появятся здесь.</div>
+        <div id="list-wrap" class="list-wrap" hidden>
+          <div id="list" class="list"></div>
+        </div>
+        <p id="more" class="footnote" hidden></p>
+      </section>
+      <p class="note">При открытии ссылки посетитель переходит на конечный сайт; его адрес появится в строке браузера.</p>
+    </main>
+    <script src="/app.js" defer></script>
+  </body>
+</html>
