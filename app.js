@@ -6,6 +6,7 @@ const ALPHABET = 'abcdefghijklmnopqrstuvwxyz0123456789';
 const $ = id => document.getElementById(id);
 const form = $('generator');
 let links = loadLinks();
+const selected = new Set();
 try { $('destination').value = localStorage.getItem(TARGET_KEY) || LEGACY_TARGET; } catch {}
 
 function loadLinks() {
@@ -16,8 +17,8 @@ function loadLinks() {
 }
 
 function saveLinks() {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(links)); }
-  catch { setStatus('Ссылки созданы, но браузер не смог сохранить список. Скачайте CSV.'); }
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(links)); return true; }
+  catch { setStatus('Браузер не смог сохранить список. Скачайте Excel до закрытия страницы.'); return false; }
 }
 
 function setStatus(message) { $('status').textContent = message; }
@@ -48,25 +49,69 @@ function targetOf(url) {
   return '';
 }
 
+function allRows() { return links.map((url, index) => ({ url, index, target: targetOf(url) })); }
+
+function filteredRows() {
+  const target = $('target-filter').value;
+  const rows = allRows().filter(row => !target || row.target === target);
+  const sort = $('sort').value;
+  if (sort === 'newest') rows.sort((a, b) => b.index - a.index);
+  if (sort === 'oldest') rows.sort((a, b) => a.index - b.index);
+  if (sort === 'target-asc') rows.sort((a, b) => a.target.localeCompare(b.target) || b.index - a.index);
+  if (sort === 'target-desc') rows.sort((a, b) => b.target.localeCompare(a.target) || b.index - a.index);
+  return rows;
+}
+
+function refreshTargets() {
+  const filter = $('target-filter');
+  const current = filter.value;
+  const targets = [...new Set(links.map(targetOf))].filter(Boolean).sort((a, b) => a.localeCompare(b));
+  filter.replaceChildren(new Option('Все адреса', ''));
+  targets.forEach(target => filter.add(new Option(target, target)));
+  filter.value = targets.includes(current) ? current : '';
+}
+
+function actionRows() {
+  const rows = filteredRows();
+  return selected.size ? rows.filter(row => selected.has(row.url)) : rows;
+}
+
 function render() {
+  refreshTargets();
+  const rows = filteredRows();
+  const available = new Set(links);
+  for (const url of selected) if (!available.has(url)) selected.delete(url);
+  const selectedHere = rows.filter(row => selected.has(row.url)).length;
   $('total').textContent = links.length.toLocaleString('ru-RU');
-  $('empty').hidden = links.length > 0;
-  $('list-wrap').hidden = links.length === 0;
-  for (const id of ['copy', 'csv', 'clear']) $(id).disabled = links.length === 0;
+  $('visible-count').textContent = `Найдено: ${rows.length.toLocaleString('ru-RU')} · Выбрано: ${selectedHere.toLocaleString('ru-RU')}`;
+  $('selection-hint').textContent = selectedHere
+    ? 'Копирование и Excel включат только выбранные ссылки.'
+    : 'Если ссылки не отмечены, копируются и выгружаются все отфильтрованные.';
+  $('empty').hidden = rows.length > 0;
+  $('empty').textContent = links.length ? 'Для этого адреса ссылок пока нет.' : 'Создайте первую партию — ссылки появятся здесь.';
+  $('list-wrap').hidden = rows.length === 0;
+  for (const id of ['copy', 'excel', 'select-filtered', 'delete-filtered']) $(id).disabled = rows.length === 0;
+  $('unselect').disabled = selected.size === 0;
+  $('delete-selected').disabled = selectedHere === 0;
+  $('clear').disabled = links.length === 0;
   const list = $('list');
   list.replaceChildren();
-  const shown = links.slice(-200).reverse();
-  const start = links.length;
-  shown.forEach((url, i) => {
+  const shown = rows.slice(0, 200);
+  shown.forEach(item => {
     const row = document.createElement('div'); row.className = 'row';
-    const index = document.createElement('span'); index.className = 'row-index'; index.textContent = String(start - i);
-    const anchor = document.createElement('a'); anchor.href = url; anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; anchor.textContent = url; anchor.title = `Цель: ${targetOf(url)}`;
+    const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.className = 'row-check'; checkbox.checked = selected.has(item.url); checkbox.setAttribute('aria-label', `Выбрать ссылку ${item.index + 1}`);
+    checkbox.addEventListener('change', () => { if (checkbox.checked) selected.add(item.url); else selected.delete(item.url); render(); });
+    const index = document.createElement('span'); index.className = 'row-index'; index.textContent = String(item.index + 1);
+    const main = document.createElement('div'); main.className = 'row-main';
+    const anchor = document.createElement('a'); anchor.href = item.url; anchor.target = '_blank'; anchor.rel = 'noopener noreferrer'; anchor.textContent = item.url;
+    const target = document.createElement('span'); target.className = 'row-target'; target.textContent = `→ ${item.target}`;
+    main.append(anchor, target);
     const button = document.createElement('button'); button.type = 'button'; button.className = 'row-copy'; button.textContent = 'Копировать';
-    button.addEventListener('click', async () => { await copyText(url); button.textContent = 'Готово'; setTimeout(() => button.textContent = 'Копировать', 1600); });
-    row.append(index, anchor, button); list.append(row);
+    button.addEventListener('click', async () => { await copyText(item.url); button.textContent = 'Готово'; setTimeout(() => button.textContent = 'Копировать', 1600); });
+    row.append(checkbox, index, main, button); list.append(row);
   });
-  $('more').hidden = links.length <= shown.length;
-  $('more').textContent = `Показаны последние ${shown.length} ссылок. Полный список доступен в CSV.`;
+  $('more').hidden = rows.length <= shown.length;
+  $('more').textContent = `На экране первые ${shown.length} из ${rows.length.toLocaleString('ru-RU')}. Кнопка «Выбрать отфильтрованные» охватывает весь список.`;
 }
 
 async function copyText(value) {
@@ -96,21 +141,37 @@ form.addEventListener('submit', event => {
   }
   links.push(...batch);
   try { localStorage.setItem(TARGET_KEY, target.href); } catch {}
-  saveLinks(); render();
-  setStatus(`Создано ${count.toLocaleString('ru-RU')} ссылок.`);
+  const saved = saveLinks(); refreshTargets(); $('target-filter').value = target.href; selected.clear(); render();
+  if (saved) setStatus(`Создано ${count.toLocaleString('ru-RU')} ссылок.`);
 });
 
-$('copy').addEventListener('click', () => copyText(links.join('\n')));
-$('csv').addEventListener('click', () => {
-  const quote = value => `"${String(value).replace(/"/g, '""')}"`;
-  const csv = '\ufeffnumber,url,target\r\n' + links.map((url, i) => `${i + 1},${quote(url)},${quote(targetOf(url))}`).join('\r\n') + '\r\n';
-  const objectUrl = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
-  const anchor = document.createElement('a'); anchor.href = objectUrl; anchor.download = 'links.csv'; anchor.click();
-  setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
-  setStatus('CSV скачан.');
+$('target-filter').addEventListener('change', () => { selected.clear(); render(); });
+$('sort').addEventListener('change', render);
+$('select-filtered').addEventListener('click', () => { filteredRows().forEach(row => selected.add(row.url)); render(); });
+$('unselect').addEventListener('click', () => { selected.clear(); render(); });
+$('copy').addEventListener('click', () => copyText(actionRows().map(row => row.url).join('\n')));
+$('excel').addEventListener('click', () => {
+  const rows = actionRows();
+  try {
+    const workbook = window.buildExcelWorkbook(rows);
+    const objectUrl = URL.createObjectURL(new Blob([workbook], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }));
+    const anchor = document.createElement('a'); anchor.href = objectUrl; anchor.download = 'links.xlsx'; anchor.click();
+    setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    setStatus(`В Excel выгружено ${rows.length.toLocaleString('ru-RU')} ссылок.`);
+  } catch { setStatus('Не удалось создать Excel-файл.'); }
 });
+
+function deleteRows(rows, label) {
+  if (!rows.length || !confirm(`${label}: ${rows.length} ссылок? Список в этом браузере будет очищен, но сами ссылки продолжат работать.`)) return;
+  const removing = new Set(rows.map(row => row.url));
+  links = links.filter(url => !removing.has(url));
+  selected.clear(); saveLinks(); render();
+  setStatus(`Удалено из списка: ${removing.size.toLocaleString('ru-RU')}.`);
+}
+
+$('delete-selected').addEventListener('click', () => deleteRows(filteredRows().filter(row => selected.has(row.url)), 'Удалить выбранные'));
+$('delete-filtered').addEventListener('click', () => deleteRows(filteredRows(), 'Удалить отфильтрованные'));
 $('clear').addEventListener('click', () => {
-  if (!confirm(`Очистить список из ${links.length} ссылок в этом браузере? Сами ссылки продолжат работать.`)) return;
-  links = []; saveLinks(); render(); setStatus('Список очищен.');
+  deleteRows(allRows(), 'Очистить весь список');
 });
 render();

@@ -6,6 +6,7 @@
     <meta name="theme-color" content="#111827">
     <title>Генератор ссылок</title>
     <link rel="stylesheet" href="/styles.css">
+    <link rel="stylesheet" href="/enhancements.css">
   </head>
   <body>
     <main class="shell">
@@ -14,7 +15,7 @@
         <div>
           <p class="eyebrow">LINK STUDIO</p>
           <h1>Массовая генерация ссылок</h1>
-          <p class="subtitle">Создавайте разные адреса для одного ресурса. Список остаётся в этом браузере.</p>
+          <p class="subtitle">Создавайте ссылки для разных адресов назначения. Список остаётся в этом браузере.</p>
         </div>
       </header>
 
@@ -62,20 +63,44 @@
             <p class="eyebrow">РЕЗУЛЬТАТ</p>
             <h2 id="results-title">Ваши ссылки <span id="total" class="count-badge">0</span></h2>
           </div>
+        </div>
+        <div class="result-controls">
+          <label>Адрес назначения
+            <select id="target-filter"><option value="">Все адреса</option></select>
+          </label>
+          <label>Порядок
+            <select id="sort">
+              <option value="newest">Сначала новые</option>
+              <option value="oldest">Сначала старые</option>
+              <option value="target-asc">По цели: А–Я</option>
+              <option value="target-desc">По цели: Я–А</option>
+            </select>
+          </label>
+        </div>
+        <div class="result-actions">
+          <p id="visible-count" class="result-count">Показано: 0</p>
           <div class="toolbar">
-            <button id="copy" class="secondary" type="button" disabled>Скопировать все</button>
-            <button id="csv" class="secondary" type="button" disabled>Скачать CSV</button>
-            <button id="clear" class="text-button" type="button" disabled>Очистить</button>
+            <button id="select-filtered" class="secondary" type="button" disabled>Выбрать отфильтрованные</button>
+            <button id="unselect" class="secondary" type="button" disabled>Снять выбор</button>
+            <button id="copy" class="secondary" type="button" disabled>Скопировать</button>
+            <button id="excel" class="secondary" type="button" disabled>Скачать Excel</button>
           </div>
         </div>
+        <p id="selection-hint" class="selection-hint">Если ссылки не отмечены, копируются и выгружаются все отфильтрованные.</p>
         <div id="empty" class="empty">Создайте первую партию — ссылки появятся здесь.</div>
         <div id="list-wrap" class="list-wrap" hidden>
           <div id="list" class="list"></div>
         </div>
         <p id="more" class="footnote" hidden></p>
+        <div class="delete-actions">
+          <button id="delete-selected" class="text-button danger" type="button" disabled>Удалить выбранные</button>
+          <button id="delete-filtered" class="text-button danger" type="button" disabled>Удалить отфильтрованные</button>
+          <button id="clear" class="text-button danger" type="button" disabled>Очистить всё</button>
+        </div>
       </section>
-      <p class="note">После перехода конечный адрес появится в строке браузера. Сохраняйте CSV: список ссылок хранится только в этом браузере.</p>
+      <p class="note">Удаление очищает список в этом браузере. Уже выданные ссылки продолжают работать. После перехода конечный адрес появится в строке браузера.</p>
     </main>
+    <script src="/excel.js" defer></script>
     <script src="/app.js" defer></script>
   </body>
 </html>
